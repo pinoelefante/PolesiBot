@@ -47,15 +47,19 @@
     }
     function IsAllAdmin($content)
     {
-        return $content["message"]["chat"]["all_members_are_administrators"];
+        if(array_key_exists("all_members_are_administrators", $content["message"]["chat"]))
+            return $content["message"]["chat"]["all_members_are_administrators"];
+        return false;
     }
     function IsAdmin($message)
     {
         if(IsAllAdmin($message))
             return TRUE;
         $userId = GetUserId($message);
-        $administrators = GetAdministrators(GetChatId($message));
-        foreach ($administrators as $admin) {
+        $admin_resp = GetAdministrators(GetChatId($message));
+        if(!$admin_resp["ok"])
+            return false;
+        foreach ($admin_resp["result"] as $admin) {
             if($admin["user"]["id"] == $userId)
                 return TRUE;
         }

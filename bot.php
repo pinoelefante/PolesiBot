@@ -67,7 +67,7 @@
             $players = GetPlayers($chatId, $game["id"]);
             if(count($players) >= $game["players"])
             {
-                SendMessage("Mi dispiace $firstname, ma la partita è già al completo");
+                SendMessage($chatId, "Mi dispiace $firstname, ma la partita è già al completo");
                 break;
             }
             if(AddPlayer($chatId, $userId, $firstname, $lastName, $nickname))
@@ -120,7 +120,7 @@
             $freeSpots = $game["players"]-count($players);
             if($spots > $freeSpots)
             {
-                SendMessage("Posti non riservati. Sono disponibili $freeSpots posti");
+                SendMessage($chatId, "Posti non riservati. Sono disponibili $freeSpots posti");
                 break;
             }
             if(ReservePlayer($chatId, $firstname, $lastName, GetNickname($json), $spots))
