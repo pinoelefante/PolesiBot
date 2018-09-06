@@ -15,7 +15,9 @@
     }
     function GetTextMessage($content)
     {
-        return $content["message"]["text"];
+        if(array_key_exists("text", $content["message"]))
+            return $content["message"]["text"];
+        return "";
     }
     function GetChatId($content)
     {

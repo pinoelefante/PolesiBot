@@ -211,12 +211,12 @@
             $elenco.=$indexPlayer." - ".($player["userId"]<0 ? "Amico di " : "").$player["firstname"]." ".$player["lastname"]."\n";
             $indexPlayer++;
         }
-        $elenco.="\n";
+        if(count($players) > 0)
+            $elenco.="\n";
         
         SendMessage($chatId,"La prossima partita si giocherà il *".$game["startDay"]."* alle ore *".$game["startHour"]."*\n"
         .(!empty($game["field"]) ? "al campo *".$game["field"]."*": "")
         .(count($players) > 0 ? "*\nElenco partecipanti:*\n$elenco\n": "\n")
         .(count($players) == $game["players"] ? "*Siamo al completo*" : "Mancano *".($game["players"]-count($players)."* giocatori")), true);
-        
     }
 ?>
