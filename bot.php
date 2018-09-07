@@ -7,13 +7,12 @@
     set_error_handler("app_error_logger");
 
     $json = GetUpdate();
-    // print_r($json);
+    CheckChatSupported($json);
+
     $message = GetTextMessage($json);
-    //file_put_contents("last_message.txt", $message);
     $chatId = GetChatId($json);
     $userId = GetUserId($json);
-    //file_put_contents("last_chat.txt", $chatId);
-
+    
     $isBotCommand = IsBotCommand($json);
     if($isBotCommand)
     {
@@ -133,7 +132,7 @@
         case "/imposta_giorno@PolesiBot":
             if(!IsAdmin($json))
                 return;
-            if(isset($parameters)){
+            if(isset($parameters) && count($parameters) > 1){
                 $newDay = $parameters[1];
                 if(SetDay($chatId, $newDay))
                     SendInfoGame($chatId);
@@ -141,13 +140,13 @@
                     SendMessage($chatId, "Giorno non cambiato");
             }
             else
-                SendMessage($chatId, "Modalità d'uso: /imposta_giorno giorno\ngiorno può assumere i seguenti valori:*oggi,domani,dopodomani,lunedi,martedi,mercoledi,giovedi,venerdi,sabato,domenica*", true);
+                SendMessage($chatId, "Modalità d'uso: /imposta_giorno giorno\ngiorno può assumere i seguenti valori: oggi,domani,dopodomani,lunedi,martedi,mercoledi,giovedi,venerdi,sabato,domenica");
             break;
         case "/imposta_ora":
         case "/imposta_ora@PolesiBot":
             if(!IsAdmin($json))
                 return;
-            if(isset($parameters)){
+            if(isset($parameters) && count($parameters) > 1){
                 $hour = $parameters[1]; //verificare il formato dell'ora
                 if(SetHour($chatId, $hour))
                     SendInfoGame($chatId);
@@ -161,7 +160,7 @@
         case "/imposta_giocatori@PolesiBot":
             if(!IsAdmin($json))
                 return;
-            if(isset($parameters) && is_numeric($parameters[1]))
+            if(isset($parameters) && count($parameters) > 1 && is_numeric($parameters[1]))
             {
                 $numPlayers = intval($parameters[1]);
                 if(SetPlayers($chatId, $numPlayers))
@@ -192,7 +191,7 @@
         case "/history":
             break;
         default:
-            //SendMessage($chatId, "Comando non valido: $lowmsg");
+            ManageMessage($chatId, $json);
             break;
     }
 
@@ -208,15 +207,58 @@
         $elenco = "";
         $indexPlayer = 1;
         foreach ($players as $player) {
-            $elenco.=$indexPlayer." - ".($player["userId"]<0 ? "Amico di " : "").$player["firstname"]." ".$player["lastname"]."\n";
+            $playerName = GetPlayerNameForList($player);
+            $elenco.=$indexPlayer." - ".($player["userId"]<0 ? "Amico di " : "").$playerName."\n";
             $indexPlayer++;
         }
-        if(count($players) > 0)
-            $elenco.="\n";
+        //if(count($players) > 0)
+            //$elenco.="\n";
+
+        $date_item = DateTime::createFromFormat("Y-m-d", $game["startDay"]);
+        $formattedData = date("d-m-Y", $date_item->getTimestamp());
+        $italianDay = GetItalianDay(date("l", $date_item->getTimestamp()));
+
+        $hour_split = explode(":", $game["startHour"]);
+        unset($hour_split[2]);
+        $formattedTime = implode(":", $hour_split);
         
-        SendMessage($chatId,"La prossima partita si giocherà il *".$game["startDay"]."* alle ore *".$game["startHour"]."*\n"
-        .(!empty($game["field"]) ? "al campo *".$game["field"]."*": "")
-        .(count($players) > 0 ? "*\nElenco partecipanti:*\n$elenco\n": "\n")
+        SendMessage($chatId,"La prossima partita si giocherà *$italianDay*, *$formattedData* alle ore *".$formattedTime."*"
+        .(!empty($game["field"]) ? " al campo *".$game["field"]."*\n" : "\n")
+        .(count($players) > 0 ? "*\nElenco partecipanti:*\n$elenco\n" : "\n")
         .(count($players) == $game["players"] ? "*Siamo al completo*" : "Mancano *".($game["players"]-count($players)."* giocatori")), true);
+    }
+    function GetPlayerNameForList($user)
+    {
+        $name = "";
+        if(empty($user["firstname"]) && empty($user["lastname"]))
+        {
+            if(!empty($user["nickname"]))
+                $name = $user["nickname"];
+            else
+                $name = "Utente senza nome";
+        }
+        else
+        {
+            $name = ($user["firstname"]!=NULL ? $user["firstname"] : "")." ".($user["lastname"]!=NULL ? $user["lastname"] : "");
+        }
+        return trim($name);
+    }
+    function CheckChatSupported($messageJson)
+    {
+        $chatId = GetChatId($messageJson);
+        if(!IsGroup($messageJson) && !IsSupergroup($messageJson))
+        {
+            SendMessage($chatId, "Questo bot supporta soltanto i gruppi e i supergruppi");
+            exit;
+        }
+    }
+    function ManageMessage($chatId, $json)
+    {
+        $newChatId = CheckChangeChatId($json);
+        if($newChatId !== NULL && $chatId != $newChatId)
+        {
+            if(!ChangeGroupId($chatId, $newChatId))
+                file_put_contents("errore_cambio_id.txt", "origine: $chatId destinazione: $newChatId");
+        }
     }
 ?>

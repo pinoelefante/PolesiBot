@@ -34,6 +34,10 @@
             $field = $lastGame["field"];
             $players = $lastGame["players"];
             $startHour = $lastGame["startHour"];
+
+            $startTimestamp = GetTimestampFromString(GetDayFromStartDate($lastGame["startDay"]));
+            $date = getdate($startTimestamp);
+            $startDay = sprintf("%02d-%02d-%02d", $date["year"], $date["mon"], $date["mday"]);
         }
 
         $query = "INSERT INTO my_match (chatId,field,startBy,players,startDay,startHour) VALUES (?,?,?,?,?,?)";
@@ -90,30 +94,74 @@
     }
     function GetTimestampFromString($day)
     {
+        $day = strtolower($day);
         switch($day)
         {
+            case "today":
             case "oggi":
                 return strtotime("now")+3600;
+            case "tomorrow":
             case "domani":
                 return strtotime("+1 day");
             case "dopodomani":
                 return strtotime("+2 day");
+            case "monday":
             case "lunedi":
+            case "lunedì":
                 return strtotime("next Monday");
+            case "tuesday":
             case "martedi":
+            case "martedì":
                 return strtotime("next Tuesday");
+            case "wednesday":
             case "mercoledi":
+            case "mercoledì":
                 return strtotime("next Wednesday");
+            case "thursday":
             case "giovedi":
+            case "giovedì":
                 return strtotime("next Thursday");
+            case "friday":
             case "venerdi":
+            case "venerdì":
                 return strtotime("next Friday");
+            case "saturday":
             case "sabato":
                 return strtotime("next Saturday");
+            case "sunday":
             case "domenica":
                 return strtotime("next Sunday");
             default:
                 return GetTimestampFromString("oggi");
+        }
+    }
+    function GetDayFromStartDate($data)
+    {
+        $date_item = DateTime::createFromFormat("Y-m-d", $data);
+        $timestamp = $date_item->getTimestamp();
+        
+        $day = date("l", $timestamp);
+        return $day;
+    }
+    function GetItalianDay($dayEng)
+    {
+        $dayEng = strtolower($dayEng);
+        switch($dayEng)
+        {
+            case "sunday":
+                return "Domenica";
+            case "monday":
+                return "Lunedì";
+            case "tuesday":
+                return "Martedì";
+            case "wednesday":
+                return "Mercoledì";
+            case "thursday":
+                return "Giovedì";
+            case "friday":
+                return "Venerdì";
+            case "saturday":
+                return "Sabato";
         }
     }
     function SetHour($chatId, $hour)
@@ -176,5 +224,10 @@
         }
         $query = "SELECT * FROM my_match_player WHERE matchId = ?";
         return dbSelect($query, "i", array($gameId));
+    }
+    function ChangeGroupId($from, $to)
+    {
+        $query = "UPDATE my_match SET chatId = ? WHERE chatId = ?";
+        return dbUpdate($query, "ii", array($to, $from));
     }
 ?>

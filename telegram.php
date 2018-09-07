@@ -1,16 +1,28 @@
 <?php
     require_once("config.php");
 
+    function IsGroup($content)
+    {
+        if(!array_key_exists("type", $content["message"]["chat"]))
+            return false;
+        return $content["message"]["chat"]["type"] == "group";
+    }
+    function IsSupergroup($content)
+    {
+        if(!array_key_exists("type", $content["message"]["chat"]))
+            return false;
+        return $content["message"]["chat"]["type"] == "supergroup";
+    }
     function SendMessage($chatId, $message, $markdown = false)
     {
         $url = WEB_ENDPOINT."/sendMessage?chat_id=".$chatId.($markdown ? "&parse_mode=Markdown" : "")."&text=".urlencode($message);
         $res = file_get_contents($url);
-        // file_put_contents("last_send_message.txt", $res);
     }
     function GetUpdate()
     {
         $content = file_get_contents("php://input");
-        // file_put_contents("last_request.txt", $content);
+        if(DEBUG_MODE)
+            file_put_contents("last_request.txt", $content, FILE_APPEND);
         return json_decode($content, true);
     }
     function GetTextMessage($content)
@@ -37,14 +49,20 @@
     }
     function GetFirstName($content)
     {
-        return $content["message"]["from"]["first_name"];
+        if(!array_key_exists("first_name", $content["message"]["from"]))
+            return NULL;
+        return utf8_decode($content["message"]["from"]["first_name"]);
     }
     function GetLastName($content)
     {
-        return $content["message"]["from"]["last_name"];
+        if(!array_key_exists("last_name", $content["message"]["from"]))
+            return NULL;
+        return utf8_decode($content["message"]["from"]["last_name"]);
     }
     function GetNickName($content)
     {
+        if(!array_key_exists("username", $content["message"]["from"]))
+            return NULL;
         return $content["message"]["from"]["username"];
     }
     function IsAllAdmin($content)
@@ -78,5 +96,11 @@
         $url = WEB_ENDPOINT."/getChatAdministrators?chat_id=".$chatId;
         $resp = file_get_contents($url);
         return json_decode($resp, true);
+    }
+    function CheckChangeChatId($json)
+    {
+        if(array_key_exists("migrate_to_chat_id", $json["message"]))
+            return $json["message"]["migrate_to_chat_id"];
+        return NULL;
     }
 ?>
