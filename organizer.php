@@ -214,8 +214,8 @@
                 return false;
             $gameId = $game["id"];
         }
-        $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname) VALUES (?,?,?,?,?)";
-        return dbUpdate($query, "iisss",array($userId,$gameId,$nickName,$firstName,$lastName));
+        $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
+        return dbUpdate($query, "iisssi",array($userId,$gameId,$nickName,$firstName,$lastName,$userId));
     }
     function RemovePlayer($chatId, $userId, $gameId=NULL)
     {

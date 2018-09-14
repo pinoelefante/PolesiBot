@@ -5,8 +5,8 @@
 
     /* Database options */
     define('DBADDR', 'localhost');
-    define('DBNAME', 'root');
-    define('DBUSER', '');
+    define('DBNAME', 'my_database');
+    define('DBUSER', 'root');
     define('DBPASS', '');
 
     /* Debug */
