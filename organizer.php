@@ -1,5 +1,6 @@
 <?php
     require_once("database.php");
+    require_once("db_tables.php");
     require_once("telegram.php");
 
     define("GAME_PENDING", 1);
@@ -8,13 +9,13 @@
 
     function GetLastGame($chatId, $withPlayers = false)
     {
-        $query = "SELECT * FROM my_match WHERE id IN (SELECT MAX(id) FROM my_match WHERE chatId = ? AND status=?)";
+        $query = "SELECT * FROM ".MATCH_TABLE." WHERE id IN (SELECT MAX(id) FROM ".MATCH_TABLE." WHERE chatId = ? AND status=?)";
         $match = dbSelect($query, "ii", array($chatId, GAME_PENDING), true);
         return $match;
     }
     function GetLastGameNG($chatId)
     {
-        $query = "SELECT * FROM my_match WHERE id IN (SELECT MAX(id) FROM my_match WHERE chatId = ?)";
+        $query = "SELECT * FROM ".MATCH_TABLE." WHERE id IN (SELECT MAX(id) FROM ".MATCH_TABLE." WHERE chatId = ?)";
         $match = dbSelect($query, "i", array($chatId), true);
         return $match;
     }
@@ -40,7 +41,7 @@
             $startDay = sprintf("%02d-%02d-%02d", $date["year"], $date["mon"], $date["mday"]);
         }
 
-        $query = "INSERT INTO my_match (chatId,field,startBy,players,startDay,startHour) VALUES (?,?,?,?,?,?)";
+        $query = "INSERT INTO ".MATCH_TABLE." (chatId,field,startBy,players,startDay,startHour) VALUES (?,?,?,?,?,?)";
         return dbUpdate($query, "isiiss", array($chatId, $field, $userId, $players, $startDay, $startHour));
     }
     function EndGame($chatId)
@@ -48,7 +49,7 @@
         $game = GetLastGame($chatId);
         if($game == null)
             return true;
-        $query = "UPDATE my_match SET status = ".GAME_ENDED." WHERE id = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET status = ".GAME_ENDED." WHERE id = ?";
         return dbUpdate($query, "i", array($game["id"]));
     }
     function ChangeExternalPlayerStatus($chatId)
@@ -57,7 +58,7 @@
         if($game == null)
             return NULL;
         $newStatus = !$game["external"];
-        $query = "UPDATE my_match SET external = ? WHERE chatId = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET external = ? WHERE chatId = ?";
         if(dbUpdate($query, "ii", array($newStatus, $chatId)))
             return $newStatus;
         return NULL;
@@ -71,7 +72,7 @@
         for($i=0;$i<$places;$i++)
         {
             $userId = GetNextReservedPlayerId($game["id"]);
-            $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
+            $query = "INSERT INTO ".PLAYERS_TABLE." (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
             if(dbUpdate($query, "iisssi", array($userId, $game["id"], $nickname, $externalName, $userName, $insertBy)))
                 $insertCount++;
         }
@@ -79,17 +80,17 @@
     }
     function FreeSpotByName($chatId, $insertBy, $externalName)
     {
-        $query = "DELETE FROM my_match_player WHERE userId < 0 AND insertBy = ? AND firstname LIKE ?";
+        $query = "DELETE FROM ".PLAYERS_TABLE." WHERE userId < 0 AND insertBy = ? AND firstname LIKE ?";
         return dbUpdate($query, "is", array($insertBy, $externalName), DatabaseReturns::RETURN_AFFECTED_ROWS);
     }
     function FreeSpot($chatId, $insertBy, $spots=1)
     {
-        $query = "DELETE FROM my_match_player WHERE userId < 0 AND insertBy = ? AND ISNULL(firstname) LIMIT $spots";
+        $query = "DELETE FROM ".PLAYERS_TABLE." WHERE userId < 0 AND insertBy = ? AND ISNULL(firstname) LIMIT $spots";
         return dbUpdate($query, "i", array($insertBy), DatabaseReturns::RETURN_AFFECTED_ROWS);
     }
     function GetNextReservedPlayerId($matchId)
     {
-        $query = "SELECT MIN(userId) as lastFriendId FROM my_match_player WHERE matchId = ? AND userId < 0";
+        $query = "SELECT MIN(userId) as lastFriendId FROM ".PLAYERS_TABLE." WHERE matchId = ? AND userId < 0";
         $result = dbSelect($query, "i", array($matchId), true);
         if($result === NULL)
             return -1;
@@ -105,7 +106,7 @@
         $date = getdate($startTimestamp);
         $startDay = sprintf("%02d-%02d-%02d", $date["year"], $date["mon"], $date["mday"]);
         // $startHour = sprintf("%02d:%02d:00", $date["hours"], $date["minutes"]);
-        $query = "UPDATE my_match SET startDay=? WHERE id = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET startDay=? WHERE id = ?";
         return dbUpdate($query, "si", array($startDay, $game["id"]));
     }
     function GetTimestampFromString($day)
@@ -186,7 +187,7 @@
         if($game == null)
             return false;
         $hour.=":00";
-        $query = "UPDATE my_match SET startHour=? WHERE id = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET startHour=? WHERE id = ?";
         return dbUpdate($query, "si", array($hour, $game["id"]));
     }
     function SetField($chatId, $name)
@@ -194,7 +195,7 @@
         $game = GetLastGame($chatId);
         if($game == null)
             return false;
-        $query = "UPDATE my_match SET field=? WHERE id = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET field=? WHERE id = ?";
         return dbUpdate($query, "si", array($name, $game["id"]));
     }
     function SetPlayers($chatId, $numPlayers)
@@ -202,7 +203,7 @@
         $game = GetLastGame($chatId);
         if($game == null)
             return false;
-        $query = "UPDATE my_match SET players=? WHERE id = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET players=? WHERE id = ?";
         return dbUpdate($query, "ii", array($numPlayers, $game["id"]));
     }
     function AddPlayer($chatId, $userId, $firstName, $lastName, $nickName, $gameId=NULL)
@@ -214,7 +215,7 @@
                 return false;
             $gameId = $game["id"];
         }
-        $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
+        $query = "INSERT INTO ".PLAYERS_TABLE." (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
         return dbUpdate($query, "iisssi",array($userId,$gameId,$nickName,$firstName,$lastName,$userId));
     }
     function RemovePlayer($chatId, $userId, $gameId=NULL)
@@ -226,7 +227,7 @@
                 return false;
             $gameId = $game["id"];
         }
-        $query = "DELETE FROM my_match_player WHERE userId = ? AND matchId = ?";
+        $query = "DELETE FROM ".PLAYERS_TABLE." WHERE userId = ? AND matchId = ?";
         return dbUpdate($query,"ii", array($userId,$gameId));
     }
     function GetPlayers($chatId, $gameId=NULL)
@@ -238,12 +239,12 @@
                 return array();
             $gameId = $game["id"];
         }
-        $query = "SELECT * FROM my_match_player WHERE matchId = ? ORDER BY insertTime ASC";
+        $query = "SELECT * FROM ".PLAYERS_TABLE." WHERE matchId = ? ORDER BY insertTime ASC";
         return dbSelect($query, "i", array($gameId));
     }
     function ChangeGroupId($from, $to)
     {
-        $query = "UPDATE my_match SET chatId = ? WHERE chatId = ?";
+        $query = "UPDATE ".MATCH_TABLE." SET chatId = ? WHERE chatId = ?";
         return dbUpdate($query, "ii", array($to, $from));
     }
 ?>

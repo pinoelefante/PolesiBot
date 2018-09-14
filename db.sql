@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `my_match` (
   `startHour` time DEFAULT NULL,
   `quota` float NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
 
 -- L’esportazione dei dati non era selezionata.
 -- Dump della struttura di tabella football.my_match_player
@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS `my_match_player` (
   `nickname` varchar(32) DEFAULT NULL,
   `firstname` varchar(24) DEFAULT NULL,
   `lastname` varchar(24) DEFAULT NULL,
+  `insertBy` bigint(20) NOT NULL,
+  `insertTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`userId`,`matchId`),
   KEY `FK_match_player_match` (`matchId`),
   CONSTRAINT `FK_match_player_match` FOREIGN KEY (`matchId`) REFERENCES `my_match` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
