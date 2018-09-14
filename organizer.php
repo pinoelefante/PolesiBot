@@ -62,14 +62,30 @@
             return $newStatus;
         return NULL;
     }
-    function ReservePlayer($chatId, $firstName, $lastName, $nickname, $places = 1)
+    function ReservePlayer($insertBy, $chatId, $externalName, $userName, $nickname, $places = 1)
     {
         $game = GetLastGame($chatId);
         if($game == null)
             return false;
-        $userId = GetNextReservedPlayerId($game["id"]);
-        $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname) VALUES (?,?,?,?,?)";
-        return dbUpdate($query, "iisss", array($userId, $game["id"], $nickname, $firstName, $lastName));
+        $insertCount = 0;
+        for($i=0;$i<$places;$i++)
+        {
+            $userId = GetNextReservedPlayerId($game["id"]);
+            $query = "INSERT INTO my_match_player (userId,matchId,nickname,firstname,lastname,insertBy) VALUES (?,?,?,?,?,?)";
+            if(dbUpdate($query, "iisssi", array($userId, $game["id"], $nickname, $externalName, $userName, $insertBy)))
+                $insertCount++;
+        }
+        return $insertCount;
+    }
+    function FreeSpotByName($chatId, $insertBy, $externalName)
+    {
+        $query = "DELETE FROM my_match_player WHERE userId < 0 AND insertBy = ? AND firstname LIKE ?";
+        return dbUpdate($query, "is", array($insertBy, $externalName), DatabaseReturns::RETURN_AFFECTED_ROWS);
+    }
+    function FreeSpot($chatId, $insertBy, $spots=1)
+    {
+        $query = "DELETE FROM my_match_player WHERE userId < 0 AND insertBy = ? AND ISNULL(firstname) LIMIT $spots";
+        return dbUpdate($query, "i", array($insertBy), DatabaseReturns::RETURN_AFFECTED_ROWS);
     }
     function GetNextReservedPlayerId($matchId)
     {
@@ -222,7 +238,7 @@
                 return array();
             $gameId = $game["id"];
         }
-        $query = "SELECT * FROM my_match_player WHERE matchId = ?";
+        $query = "SELECT * FROM my_match_player WHERE matchId = ? ORDER BY insertTime ASC";
         return dbSelect($query, "i", array($gameId));
     }
     function ChangeGroupId($from, $to)

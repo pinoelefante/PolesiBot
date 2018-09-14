@@ -14,6 +14,7 @@
     $userId = GetUserId($json);
     
     $isBotCommand = IsBotCommand($json);
+        $parameters = array();
     if($isBotCommand)
     {
         if(strpos($message, " ")!==false)
@@ -26,12 +27,18 @@
     }
     else
         $lowmsg = strtolower($message);
+        
     switch($lowmsg)
     {
         case "/nuova":
-        case "/nuova@PolesiBot":
+        case "/nuova@".BOT_NAME:
             if(!IsAdmin($json))
                 break;
+            if(!IsGameEnded($chatId))
+            {
+                SendMessage($chatId, "Una partita è ancora in corso. Terminala per crearne un'altra");
+                return;
+            }
             if(CreateNewGame($chatId, $userId))
             {
                 SendMessage($chatId, "Partita creata");
@@ -41,7 +48,7 @@
                 SendMessage($chatId, "Non è stato possibile creare una nuova partita");
             break;
         case "/termina":
-        case "/termina@PolesiBot":
+        case "/termina@".BOT_NAME:
             if(!IsAdmin($json))
                 break;
             if(EndGame($chatId))
@@ -50,12 +57,15 @@
                 SendMessage($chatId, "Non sono riuscito a terminare la partita");
             break;
         case "/info":
-        case "/info@PolesiBot":
+        case "/info@".BOT_NAME:
             SendInfoGame($chatId);
             break;
+        case "presente":
         case "ci sono":
         case "/ci_sono":
-        case "/ci_sono@PolesiBot":
+        case "/ci_sono@".BOT_NAME:
+            if(IsGameEnded($chatId))
+                return;
             $userId = GetUserId($json);
             $firstname = GetFirstName($json);
             $lastName = GetLastName($json);
@@ -75,11 +85,14 @@
                 SendInfoGame($chatId);
             }
             break;
+        case "assente":
         case "non ci sono":
         case "non ci sono più":
         case "non ci sono piu":
         case "/non_ci_sono":
-        case "/non_ci_sono@PolesiBot":
+        case "/non_ci_sono@".BOT_NAME:
+            if(IsGameEnded($chatId))
+                return;
             $userId = GetUserId($json);
             if(RemovePlayer($chatId, $userId))
             {
@@ -89,13 +102,13 @@
             }
             break;
         case "/info_esterni":
-        case "/info_esterni@PolesiBot":
+        case "/info_esterni@".BOT_NAME:
             $game = GetLastGame($chatId);
             if($game != null)
                 SendMessage($chatId, ($game["external"] ? "Giocatori esterni al gruppo *ABILITATO*" : "Giocatori esterni al gruppo *NON ABILITATO*"), true);
             break;
         case "/cambia_esterni":
-        case "/cambia_esterni@PolesiBot":
+        case "/cambia_esterni@".BOT_NAME:
             if(!IsAdmin($json))
                 return;
             if(ChangeExternalPlayerStatus($chatId))
@@ -108,13 +121,30 @@
             }
             break;
         case "/riserva_posto":
-        case "/riserva_posto@PolesiBot":
+        case "/riserva_posto@".BOT_NAME:
+            if(IsGameEnded($chatId))
+                return;
             $game = GetLastGame($chatId);
             if($game==null || !$game["external"])
                 return;
-            $firstname = GetFirstName($json);
-            $lastName = GetLastName($json);
+            
             $spots = 1;
+            $externalName = NULL;
+            $userFullName = trim(GetFirstName($json)." ".GetLastName($json));
+
+            if(count($parameters) > 1)
+            {
+                if(is_numeric($parameters[1]))
+                {
+                    $tempVal = intval($parameters[1]);
+                    $spots = $tempVal > 0 ? $tempVal : 1;
+                }
+                else
+                {
+                    unset($parameters[0]);
+                    $externalName = implode(" ", $parameters);
+                }
+            }
             $players = GetPlayers($chatId, $game["id"]);
             $freeSpots = $game["players"]-count($players);
             if($spots > $freeSpots)
@@ -122,14 +152,40 @@
                 SendMessage($chatId, "Posti non riservati. Sono disponibili $freeSpots posti");
                 break;
             }
-            if(ReservePlayer($chatId, $firstname, $lastName, GetNickname($json), $spots))
-            {
-                SendMessage($chatId,"Riservato/i $spots posto/i da *$firstname $lastName*" ,true);
+            $spotsReserved = ReservePlayer($userId, $chatId, $externalName, $userFullName, GetNickname($json), $spots);
+            SendMessage($chatId,"Riservato/i $spotsReserved posto/i da *$userFullName*", true);
+            if($spotsReserved > 0)
                 SendInfoGame($chatId);
+            break;
+        case "/libera_posto":
+        case "/libera_posto@".BOT_NAME:
+            if(IsGameEnded($chatId))
+                return;
+            $userFullName = trim(GetFirstName($json)." ".GetLastName($json));
+            $spots = 1;
+            $externalName = NULL;
+    
+            if(count($parameters) > 1)
+            {
+                if(is_numeric($parameters[1]))
+                {
+                    $tempVal = intval($parameters[1]);
+                    $spots = $tempVal > 0 ? $tempVal : 1;
+                }
+                else
+                {
+                    unset($parameters[0]);
+                    $externalName = implode(" ", $parameters);
+                }
             }
+            $spotsFreed = $externalName != NULL ? FreeSpotByName($chatId, $userId, $externalName) : FreeSpot($chatId, $userId, $spots);
+
+            SendMessage($chatId,"Liberato/i $spotsFreed posto/i da *$userFullName*", true);
+            if($spotsFreed > 0)
+                SendInfoGame($chatId);
             break;
         case "/imposta_giorno":
-        case "/imposta_giorno@PolesiBot":
+        case "/imposta_giorno@".BOT_NAME:
             if(!IsAdmin($json))
                 return;
             if(isset($parameters) && count($parameters) > 1){
@@ -143,7 +199,7 @@
                 SendMessage($chatId, "Modalità d'uso: /imposta_giorno giorno\ngiorno può assumere i seguenti valori: oggi,domani,dopodomani,lunedi,martedi,mercoledi,giovedi,venerdi,sabato,domenica");
             break;
         case "/imposta_ora":
-        case "/imposta_ora@PolesiBot":
+        case "/imposta_ora@".BOT_NAME:
             if(!IsAdmin($json))
                 return;
             if(isset($parameters) && count($parameters) > 1){
@@ -157,7 +213,7 @@
                 SendMessage($chatId, "Modalità d'uso: /imposta_ora HH:MM");
             break;
         case "/imposta_giocatori":
-        case "/imposta_giocatori@PolesiBot":
+        case "/imposta_giocatori@".BOT_NAME:
             if(!IsAdmin($json))
                 return;
             if(isset($parameters) && count($parameters) > 1 && is_numeric($parameters[1]))
@@ -172,7 +228,7 @@
                 SendMessage($chatId, "Modalità d'uso: /imposta_giocatori N");
             break;
         case "/imposta_campo":
-        case "/imposta_campo@PolesiBot":
+        case "/imposta_campo@".BOT_NAME:
             if(!IsAdmin($json))
                 return;
             if(isset($parameters))
@@ -187,8 +243,31 @@
             else
                 SendMessage($chatId, "Modalità d'uso: /imposta_campo NomeCampo");
             break;
-
-        case "/history":
+        case "/rimuovi":
+        case "/rimuovi@".BOT_NAME:
+            if(!isAdmin($json))
+                return;
+            SendMessage($chatId, "Non implementato");
+            // rimuove un giocatore in base al nome ed il cognome
+            break;
+        case "/rimuovi_esterni":
+        case "/rimuovi_esterni@".BOT_NAME:
+            if(!isAdmin($json))
+                return;
+            SendMessage($chatId, "Non implementato");
+            break;
+        case "/recupera":
+        case "/recupera@".BOT_NAME:
+            if(!isAdmin($json))
+                return;
+            SendMessage($chatId, "Non implementato");
+            // cancella l'ultima gara creata ed utilizza la penultima
+            break;
+        case "/statistiche":
+        case "/statistiche@".BOT_NAME:
+            if(!isAdmin($json))
+                return;
+            SendMessage($chatId, "Non implementato");
             break;
         default:
             ManageMessage($chatId, $json);
@@ -207,12 +286,10 @@
         $elenco = "";
         $indexPlayer = 1;
         foreach ($players as $player) {
-            $playerName = GetPlayerNameForList($player);
-            $elenco.=$indexPlayer." - ".($player["userId"]<0 ? "Amico di " : "").$playerName."\n";
+            $playerName = GetPlayerNameForList($player, $player["userId"]<0);
+            $elenco.=$indexPlayer." - ".$playerName."\n";
             $indexPlayer++;
         }
-        //if(count($players) > 0)
-            //$elenco.="\n";
 
         $date_item = DateTime::createFromFormat("Y-m-d", $game["startDay"]);
         $formattedData = date("d-m-Y", $date_item->getTimestamp());
@@ -227,21 +304,21 @@
         .(count($players) > 0 ? "*\nElenco partecipanti:*\n$elenco\n" : "\n")
         .(count($players) == $game["players"] ? "*Siamo al completo*" : "Mancano *".($game["players"]-count($players)."* giocatori")), true);
     }
-    function GetPlayerNameForList($user)
+    function GetPlayerNameForList($user, $isFriend=false)
     {
-        $name = "";
-        if(empty($user["firstname"]) && empty($user["lastname"]))
+        if($isFriend)
         {
-            if(!empty($user["nickname"]))
-                $name = $user["nickname"];
-            else
-                $name = "Utente senza nome";
+            $name = "Amico di "
+                    .(empty($user["lastname"]) ? $user["nickname"] : $user["lastname"])
+                    .(empty($user["firstname"]) ? "" : " (".$user["firstname"].")");
         }
         else
         {
-            $name = ($user["firstname"]!=NULL ? $user["firstname"] : "")." ".($user["lastname"]!=NULL ? $user["lastname"] : "");
+            $name = trim(($user["firstname"]!=NULL ? $user["firstname"] : "")." ".($user["lastname"]!=NULL ? $user["lastname"] : ""));
+            if(empty($name))
+                $name = !empty($user["nickname"]) ? $user["nickname"] : "Utente sconosciuto";
         }
-        return trim($name);
+        return $name;
     }
     function CheckChatSupported($messageJson)
     {
@@ -260,5 +337,19 @@
             if(!ChangeGroupId($chatId, $newChatId))
                 file_put_contents("errore_cambio_id.txt", "origine: $chatId destinazione: $newChatId");
         }
+    }
+    function IsGameEnded($chatId)
+    {
+        $game = GetLastGame($chatId);
+        if($game == NULL)
+            return true;
+        $timeNow = time()-600;
+        $timeEnd = GetTimestampFromDateTime($game["startDay"], $game["startHour"]);
+        return $timeNow > $timeEnd;
+    }
+    function GetTimestampFromDateTime($date,$time)
+    {
+        $date_item = DateTime::createFromFormat("Y-m-d H:i:s", $date." ".$time);
+        return $date_item->getTimestamp();
     }
 ?>

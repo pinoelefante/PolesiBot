@@ -1,6 +1,7 @@
 <?php
-    define(API_TOKEN,"");
-    define(WEB_ENDPOINT, "https://api.telegram.org/bot".API_TOKEN);
+    define("API_TOKEN","");
+    define("WEB_ENDPOINT", "https://api.telegram.org/bot".API_TOKEN);
+    define("BOT_NAME", "");
 
     /* Database options */
     define('DBADDR', 'localhost');
