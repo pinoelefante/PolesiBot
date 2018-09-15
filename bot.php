@@ -196,7 +196,14 @@
                     SendMessage($chatId, "Giorno non cambiato");
             }
             else
-                SendMessage($chatId, "Modalità d'uso: /imposta_giorno giorno\ngiorno può assumere i seguenti valori: oggi,domani,dopodomani,lunedi,martedi,mercoledi,giovedi,venerdi,sabato,domenica");
+                SendKeyboard($chatId, "Scegli il giorno dall'elenco", 2, 
+                                        "/imposta_giorno Lunedi",
+                                        "/imposta_giorno Martedi",
+                                        "/imposta_giorno Mercoledi",
+                                        "/imposta_giorno Giovedi",
+                                        "/imposta_giorno Venerdi",
+                                        "/imposta_giorno Sabato",
+                                        "/imposta_giorno Domenica");
             break;
         case "/imposta_ora":
         case "/imposta_ora@".BOT_NAME:

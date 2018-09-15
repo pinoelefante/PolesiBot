@@ -18,6 +18,28 @@
         $url = WEB_ENDPOINT."/sendMessage?chat_id=".$chatId.($markdown ? "&parse_mode=Markdown" : "")."&text=".urlencode($message);
         $res = file_get_contents($url);
     }
+    function SendKeyboard($chatId,$message,$perLine=2,...$buttons)
+    {
+        $keyButtons = array();
+        $keyRow = array();
+        foreach ($buttons as $buttonText) {
+            if(array_push($keyRow, urlencode($buttonText)) == $perLine)
+            {
+                array_push($keyButtons, $keyRow);
+                $keyRow = array();
+            }
+        }
+        if(count($keyRow) > 0)
+            array_push($keyButtons, $keyRow);
+        $key_array = array("keyboard" => $keyButtons, "one_time_keyboard" => true);
+        $keyboard = json_encode($key_array);
+        $url = WEB_ENDPOINT."/sendMessage?chat_id=".$chatId."&text=".urlencode($message)."&reply_markup=".$keyboard;
+        file_get_contents($url);
+    }
+    function SendCloseKeyboard($chatId,$message,$nick=NULL)
+    {
+
+    }
     function GetUpdate()
     {
         $content = file_get_contents("php://input");
